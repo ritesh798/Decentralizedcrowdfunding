@@ -1,0 +1,38 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ninterface AggregatorV3Interface {\n  function decimals() external view returns (uint8);\n\n  function description() external view returns (string memory);\n\n  function version() external view returns (uint256);\n\n  function getRoundData(uint80 _roundId)\n    external\n    view\n    returns (\n      uint80 roundId,\n      int256 answer,\n      uint256 startedAt,\n      uint256 updatedAt,\n      uint80 answeredInRound\n    );\n\n  function latestRoundData()\n    external\n    view\n    returns (\n      uint80 roundId,\n      int256 answer,\n      uint256 startedAt,\n      uint256 updatedAt,\n      uint80 answeredInRound\n    );\n}\n"
+    },
+    "contracts/CrowdFunding.sol": {
+      "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.0;\r\nimport \"@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol\";\r\n\r\n\r\ncontract CrowdFunding{\r\n    address[] public funders;\r\n    mapping(address=> uint256) public addressToAmountFunded;\r\n    uint256 public constant MINIMUM_USD = 13*1e18;\r\n    address public immutable i_owner;\r\n    AggregatorV3Interface public priceFeed;\r\n\r\n\r\n    modifier OnlyOwner() {\r\n        require(msg.sender == i_owner ,\"Only owner can withdraw funds\");\r\n        _;\r\n    }\r\n\r\n    constructor (address priceFeedAddress){\r\n        i_owner=  msg.sender;\r\n        priceFeed = AggregatorV3Interface(priceFeedAddress);\r\n    }\r\n     \r\n\r\n     function fund() public payable {\r\n        require(getConversion(msg.value)>MINIMUM_USD,\"Not Enouggh Eth\");\r\n        funders.push(msg.sender);\r\n        addressToAmountFunded[msg.sender]=msg.value;\r\n\r\n}\r\n\r\n\r\nfunction withdraw() public OnlyOwner {\r\n    for (uint256 funderIndex = 0;funderIndex < funders.length;\r\n    funderIndex++){\r\n        address funder = funders[funderIndex];\r\n        addressToAmountFunded[funder] = 0;\r\n\r\n    }\r\n    funders = new address[](0);\r\n    (bool success,) = payable(msg.sender).call{value: address(this).balance}(\"\");\r\n    require(success, \"Eth Transfer Failed\");\r\n\r\n}\r\n\r\n\r\nfunction getPrice()public view returns(uint256 ){\r\n    (,int256 answer,,,)= priceFeed.latestRoundData();\r\n    return uint256(answer*1e10);\r\n    \r\n\r\n}\r\nfunction getConversion(uint256 ethAmount) public view\r\n returns(uint256) {\r\n    uint256 ethPrice  = getPrice();\r\n    uint256 ethAmountInUsd =   (ethAmount*ethPrice) /1e10;\r\n    return ethAmountInUsd;\r\n\r\n }\r\nreceive() external payable {\r\n    fund();\r\n}\r\n\r\nfallback() external payable {\r\n    fund();\r\n}\r\n\r\n\r\n}\r\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata",
+          "devdoc",
+          "userdoc",
+          "storageLayout",
+          "evm.gasEstimates"
+        ],
+        "": [
+          "ast"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    }
+  }
+}
